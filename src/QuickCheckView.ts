@@ -11,17 +11,17 @@ export const QUICK_CHECK_VIEW_TYPE = "quick-check-view";
 type ViewState = "idle" | "loading" | "result" | "error";
 
 export class QuickCheckView extends ItemView {
-  private plugin: ResearchReportPlugin;
-  private state: ViewState = "idle";
-  private currentResult: QuickCheckResult | null = null;
-  private currentError: string | null = null;
+  protected plugin: ResearchReportPlugin;
+  protected state: ViewState = "idle";
+  protected currentResult: QuickCheckResult | null = null;
+  protected currentError: string | null = null;
 
   /* DOM refs */
-  private inputEl: HTMLTextAreaElement;
-  private contextIndicatorEl: HTMLDivElement;
-  private serviceStatusEl: HTMLDivElement;
-  private sendBtnEl: HTMLButtonElement;
-  private bodyEl: HTMLDivElement;
+  protected inputEl: HTMLTextAreaElement;
+  protected contextIndicatorEl: HTMLDivElement;
+  protected serviceStatusEl: HTMLDivElement;
+  protected sendBtnEl: HTMLButtonElement;
+  protected bodyEl: HTMLDivElement;
 
   constructor(leaf: WorkspaceLeaf, plugin: ResearchReportPlugin) {
     super(leaf);
@@ -150,7 +150,7 @@ export class QuickCheckView extends ItemView {
     }
   }
 
-  private async refreshServiceStatus(): Promise<void> {
+  protected async refreshServiceStatus(): Promise<void> {
     if (this.plugin.settings.serviceMode !== "control_plane") {
       this.renderServiceStatus();
       return;
@@ -159,7 +159,7 @@ export class QuickCheckView extends ItemView {
     this.renderServiceStatus();
   }
 
-  private renderServiceStatus(): void {
+  protected renderServiceStatus(): void {
     if (!this.serviceStatusEl) return;
     this.serviceStatusEl.empty();
 
@@ -204,7 +204,7 @@ export class QuickCheckView extends ItemView {
     }
   }
 
-  private getContext(): {
+  protected getContext(): {
     selectedText: string;
     documentContent: string;
     documentTitle: string;
@@ -270,12 +270,12 @@ export class QuickCheckView extends ItemView {
 
   /* ── State Management ── */
 
-  private setViewState(state: ViewState): void {
+  protected setViewState(state: ViewState): void {
     this.state = state;
     this.renderBody();
   }
 
-  private showError(message: string): void {
+  protected showError(message: string): void {
     this.currentError = message;
     this.setViewState("error");
   }
@@ -302,7 +302,7 @@ export class QuickCheckView extends ItemView {
     }
   }
 
-  private renderIdleState(): void {
+  protected renderIdleState(): void {
     const idle = this.bodyEl.createDiv({ cls: "qc-idle" });
     const iconEl = idle.createDiv({ cls: "qc-idle-icon" });
     setIcon(iconEl, "search");
@@ -318,7 +318,7 @@ export class QuickCheckView extends ItemView {
     ul.createEl("li", { text: "这段论述是否有已知争议？" });
   }
 
-  private renderLoadingState(): void {
+  protected renderLoadingState(): void {
     const loading = this.bodyEl.createDiv({ cls: "qc-loading" });
     const spinner = loading.createDiv({ cls: "qc-spinner" });
     for (let i = 0; i < 3; i++) {
@@ -333,7 +333,7 @@ export class QuickCheckView extends ItemView {
     }
   }
 
-  private renderResultState(): void {
+  protected renderResultState(): void {
     if (!this.currentResult) return;
     const r = this.currentResult;
 
