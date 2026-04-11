@@ -1,0 +1,21 @@
+{
+  "name": "obsidian-research-report",
+  "version": "0.1.0",
+  "description": "Industry research report: plan keywords, fetch full-text, synthesize with Claude, auto-write to note.",
+  "main": "main.js",
+  "type": "module",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "node esbuild.config.mjs production"
+  },
+  "keywords": ["obsidian", "plugin", "research", "claude"],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "esbuild": "0.25.5",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "obsidian": "latest"
+  }
+}
