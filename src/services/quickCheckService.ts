@@ -70,6 +70,12 @@ const ERROR_MESSAGES: Record<string, string> = {
   INVALID_INPUT: "请求格式错误",
   PROVIDER_MISCONFIGURED: "模型提供商未正确配置 (请检查 API Key)",
   QUICK_CHECK_FAILED: "模型推理失败，请稍后重试",
+  FACT_GUARD_FAILED: "事实核查失败，请稍后重试",
+  QUOTA_EXCEEDED: "当日配额已用完，请明天再试",
+  PROVIDER_TIMEOUT: "模型响应超时，请稍后重试",
+  PROVIDER_REQUEST_FAILED: "调用模型服务失败，请稍后重试",
+  PROVIDER_UNAVAILABLE: "模型服务当前不可用",
+  PROVIDER_BAD_RESPONSE: "模型服务返回了无效内容",
   UNKNOWN: "服务器内部错误",
 };
 
