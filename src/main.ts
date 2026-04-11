@@ -3,6 +3,7 @@ import { DEFAULT_SETTINGS, type ResearchReportSettings } from "./settings";
 import { ResearchReportSettingTab } from "./ResearchReportSettingTab";
 import { ResearchReportModal } from "./ResearchReportModal";
 import { QuickCheckView, QUICK_CHECK_VIEW_TYPE } from "./QuickCheckView";
+import { FactGuardView, FACT_GUARD_VIEW_TYPE } from "./FactGuardView";
 import { DeepResearchView, DEEP_RESEARCH_VIEW_TYPE } from "./DeepResearchView";
 import {
   ensureControlPlaneBootstrap,
@@ -36,6 +37,22 @@ export default class ResearchReportPlugin extends Plugin {
       id: "open-quick-check",
       name: "打开 Quick Check 可信核查",
       callback: () => this.activateQuickCheckView(),
+    });
+
+    /* ── Fact Guard View ── */
+    this.registerView(
+      FACT_GUARD_VIEW_TYPE,
+      (leaf) => new FactGuardView(leaf, this)
+    );
+
+    this.addRibbonIcon("shield", "Fact Guard · 事实核查", () => {
+      this.activateFactGuardView();
+    });
+
+    this.addCommand({
+      id: "open-fact-guard",
+      name: "打开 Fact Guard 事实核查",
+      callback: () => this.activateFactGuardView(),
     });
 
     /* ── Deep Research View ── */
@@ -112,6 +129,29 @@ export default class ResearchReportPlugin extends Plugin {
       if (leaf) {
         await leaf.setViewState({
           type: QUICK_CHECK_VIEW_TYPE,
+          active: true,
+        });
+      }
+    }
+
+    if (leaf) {
+      workspace.revealLeaf(leaf);
+    }
+  }
+
+  async activateFactGuardView(): Promise<void> {
+    const { workspace } = this.app;
+
+    let leaf: WorkspaceLeaf | null = null;
+    const leaves = workspace.getLeavesOfType(FACT_GUARD_VIEW_TYPE);
+
+    if (leaves.length > 0) {
+      leaf = leaves[0];
+    } else {
+      leaf = workspace.getRightLeaf(false);
+      if (leaf) {
+        await leaf.setViewState({
+          type: FACT_GUARD_VIEW_TYPE,
           active: true,
         });
       }
