@@ -223,7 +223,7 @@ export class QuickCheckView extends ItemView {
 
   /* ── Quick Check Action ── */
 
-  private async doQuickCheck(): Promise<void> {
+  protected async doQuickCheck(): Promise<void> {
     const query = this.inputEl.value.trim();
     if (!query) {
       this.showError("请输入研究问题");
