@@ -1,9 +1,9 @@
 {
   "id": "research-report",
   "name": "Research Report",
-  "version": "0.1.0",
+  "version": "0.2.0-beta",
   "minAppVersion": "0.15.0",
-  "description": "结合 Claude 与联网搜索，从话题规划关键词、全文抓取资料并自动整理成行业研究报告写入笔记。",
+  "description": "可信核查插件：Quick Check 快速核查 + Fact Guard 事实核查。支持本地 Runtime 与 Control Plane 云端两种模式。",
   "author": "xuziming",
   "authorUrl": "",
   "isDesktopOnly": false
