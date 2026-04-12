@@ -1,6 +1,33 @@
-import { requestUrl } from "obsidian";
+import { requestUrl, type RequestUrlParam, type RequestUrlResponse } from "obsidian";
 import type ResearchReportPlugin from "../main";
 import { invokeControlPlaneCapability } from "./controlPlaneService";
+
+/**
+ * Wrap Obsidian's requestUrl with a client-side timeout via Promise.race.
+ *
+ * Background: Obsidian's RequestUrlParam type does not declare a `timeout`
+ * field; the runtime silently drops unknown properties. Earlier code passed
+ * an unsupported timeout property and suppressed the type error, which
+ * compiled but had no runtime effect.
+ *
+ * This helper races requestUrl against a setTimeout-based rejection. When
+ * the timer wins, it rejects with Error("PROVIDER_TIMEOUT"), allowing the
+ * existing getErrorMessage() chain to translate the code via ERROR_MESSAGES.
+ *
+ * Caveat: requestUrl itself is not cancellable, so the underlying request
+ * continues in the background until it naturally completes.
+ */
+export async function requestUrlWithTimeout(
+  params: RequestUrlParam,
+  timeoutMs: number
+): Promise<RequestUrlResponse> {
+  return Promise.race([
+    requestUrl(params),
+    new Promise<RequestUrlResponse>((_, reject) =>
+      setTimeout(() => reject(new Error("PROVIDER_TIMEOUT")), timeoutMs)
+    ),
+  ]);
+}
 
 /* ── Types ── */
 
@@ -149,16 +176,20 @@ export async function callQuickCheck(
 
   let response;
   try {
-    response = await requestUrl({
-      url,
-      method: "POST",
-      headers,
-      body: JSON.stringify(body),
-      // @ts-ignore
-      timeout: config.timeout,
-      throw: false,
-    });
+    response = await requestUrlWithTimeout(
+      {
+        url,
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+        throw: false,
+      },
+      config.timeout
+    );
   } catch (err) {
+    if (err instanceof Error && err.message === "PROVIDER_TIMEOUT") {
+      throw new Error(getErrorMessage("PROVIDER_TIMEOUT"));
+    }
     throw new Error(
       `无法连接到研究引擎 (${config.baseUrl})。请确认服务已启动。`
     );

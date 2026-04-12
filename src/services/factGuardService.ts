@@ -1,7 +1,6 @@
-import { requestUrl } from "obsidian";
 import type ResearchReportPlugin from "../main";
 import { invokeControlPlaneCapability, type ControlPlaneContext } from "./controlPlaneService";
-import { getErrorMessage, type QuickCheckContext } from "./quickCheckService";
+import { getErrorMessage, requestUrlWithTimeout, type QuickCheckContext } from "./quickCheckService";
 
 export type FactGuardContext = QuickCheckContext;
 
@@ -125,16 +124,20 @@ export async function callFactGuard(
 
   let response;
   try {
-    response = await requestUrl({
-      url,
-      method: "POST",
-      headers,
-      body: JSON.stringify(body),
-      // @ts-ignore obsidian timeout extension
-      timeout: config.timeout,
-      throw: false,
-    });
-  } catch {
+    response = await requestUrlWithTimeout(
+      {
+        url,
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+        throw: false,
+      },
+      config.timeout
+    );
+  } catch (err) {
+    if (err instanceof Error && err.message === "PROVIDER_TIMEOUT") {
+      throw new Error(getErrorMessage("PROVIDER_TIMEOUT"));
+    }
     throw new Error(`无法连接到研究引擎 (${config.baseUrl})。请确认服务已启动。`);
   }
 

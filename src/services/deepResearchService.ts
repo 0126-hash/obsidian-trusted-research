@@ -1,10 +1,10 @@
-import { requestUrl } from "obsidian";
 import type ResearchReportPlugin from "../main";
 import {
   cancelControlPlaneTask,
   createControlPlaneTask,
   getControlPlaneTask,
 } from "./controlPlaneService";
+import { requestUrlWithTimeout } from "./quickCheckService";
 
 /* ── Types ── */
 
@@ -192,16 +192,20 @@ export async function createResearchTask(
 
   let response;
   try {
-    response = await requestUrl({
-      url,
-      method: "POST",
-      headers: buildHeaders(config),
-      body: JSON.stringify(body),
-      // @ts-ignore
-      timeout: config.timeout,
-      throw: false,
-    });
-  } catch {
+    response = await requestUrlWithTimeout(
+      {
+        url,
+        method: "POST",
+        headers: buildHeaders(config),
+        body: JSON.stringify(body),
+        throw: false,
+      },
+      config.timeout
+    );
+  } catch (err) {
+    if (err instanceof Error && err.message === "PROVIDER_TIMEOUT") {
+      throw new Error(getErrorMessage("PROVIDER_TIMEOUT"));
+    }
     throw new Error(`无法连接到研究引擎 (${config.baseUrl})。请确认服务已启动。`);
   }
 
@@ -237,15 +241,19 @@ export async function getResearchTask(
 
   let response;
   try {
-    response = await requestUrl({
-      url,
-      method: "GET",
-      headers: buildHeaders(config),
-      // @ts-ignore
-      timeout: config.timeout,
-      throw: false,
-    });
-  } catch {
+    response = await requestUrlWithTimeout(
+      {
+        url,
+        method: "GET",
+        headers: buildHeaders(config),
+        throw: false,
+      },
+      config.timeout
+    );
+  } catch (err) {
+    if (err instanceof Error && err.message === "PROVIDER_TIMEOUT") {
+      throw new Error(getErrorMessage("PROVIDER_TIMEOUT"));
+    }
     throw new Error(`无法连接到研究引擎 (${config.baseUrl})。请确认服务已启动。`);
   }
 
@@ -280,16 +288,20 @@ export async function confirmResearchTask(
 
   let response;
   try {
-    response = await requestUrl({
-      url,
-      method: "POST",
-      headers: buildHeaders(config),
-      body: JSON.stringify({ accepted: true }),
-      // @ts-ignore
-      timeout: config.timeout,
-      throw: false,
-    });
-  } catch {
+    response = await requestUrlWithTimeout(
+      {
+        url,
+        method: "POST",
+        headers: buildHeaders(config),
+        body: JSON.stringify({ accepted: true }),
+        throw: false,
+      },
+      config.timeout
+    );
+  } catch (err) {
+    if (err instanceof Error && err.message === "PROVIDER_TIMEOUT") {
+      throw new Error(getErrorMessage("PROVIDER_TIMEOUT"));
+    }
     throw new Error(`无法连接到研究引擎 (${config.baseUrl})。请确认服务已启动。`);
   }
 
@@ -325,16 +337,20 @@ export async function cancelResearchTask(
 
   let response;
   try {
-    response = await requestUrl({
-      url,
-      method: "POST",
-      headers: buildHeaders(config),
-      body: JSON.stringify({}),
-      // @ts-ignore
-      timeout: config.timeout,
-      throw: false,
-    });
-  } catch {
+    response = await requestUrlWithTimeout(
+      {
+        url,
+        method: "POST",
+        headers: buildHeaders(config),
+        body: JSON.stringify({}),
+        throw: false,
+      },
+      config.timeout
+    );
+  } catch (err) {
+    if (err instanceof Error && err.message === "PROVIDER_TIMEOUT") {
+      throw new Error(getErrorMessage("PROVIDER_TIMEOUT"));
+    }
     throw new Error(`无法连接到研究引擎 (${config.baseUrl})。请确认服务已启动。`);
   }
 
@@ -379,16 +395,20 @@ export async function exportResearchMarkdown(
 
   let response;
   try {
-    response = await requestUrl({
-      url,
-      method: "POST",
-      headers: buildHeaders(config),
-      body: JSON.stringify(body),
-      // @ts-ignore
-      timeout: config.timeout,
-      throw: false,
-    });
-  } catch {
+    response = await requestUrlWithTimeout(
+      {
+        url,
+        method: "POST",
+        headers: buildHeaders(config),
+        body: JSON.stringify(body),
+        throw: false,
+      },
+      config.timeout
+    );
+  } catch (err) {
+    if (err instanceof Error && err.message === "PROVIDER_TIMEOUT") {
+      throw new Error(getErrorMessage("PROVIDER_TIMEOUT"));
+    }
     throw new Error(`无法连接到研究引擎 (${config.baseUrl})。请确认服务已启动。`);
   }
 
