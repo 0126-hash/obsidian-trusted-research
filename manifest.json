@@ -1,10 +1,10 @@
 {
   "id": "research-report",
-  "name": "Research Report",
-  "version": "0.2.0-beta",
+  "name": "Trusted Research",
+  "version": "0.2.0",
   "minAppVersion": "0.15.0",
-  "description": "可信核查插件：Quick Check 快速核查 + Fact Guard 事实核查。支持本地 Runtime 与 Control Plane 云端两种模式。",
+  "description": "桌面版可信研究插件，提供 Quick Check、Fact Guard 和 Deep Research，并支持 Runtime 与 Control Plane 两种后端模式。",
   "author": "xuziming",
   "authorUrl": "",
-  "isDesktopOnly": false
+  "isDesktopOnly": true
 }

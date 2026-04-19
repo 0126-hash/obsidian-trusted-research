@@ -153,6 +153,10 @@ export async function callQuickCheck(
     dashscopeDeepResearchModel: plugin.settings.dashscopeDeepResearchModel,
   };
 
+  if (!config.baseUrl.trim()) {
+    throw new Error("请先在插件设置中填写 Research API 地址。");
+  }
+
   const url = `${config.baseUrl.replace(/\/$/, "")}/research/quick-check`;
 
   const body = {

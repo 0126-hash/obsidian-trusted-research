@@ -1,7 +1,6 @@
-import { Plugin, Notice, WorkspaceLeaf, Menu, Editor, MarkdownView } from "obsidian";
+import { Plugin, Notice, WorkspaceLeaf, Menu, Editor } from "obsidian";
 import { DEFAULT_SETTINGS, type ResearchReportSettings } from "./settings";
 import { ResearchReportSettingTab } from "./ResearchReportSettingTab";
-import { ResearchReportModal } from "./ResearchReportModal";
 import { QuickCheckView, QUICK_CHECK_VIEW_TYPE } from "./QuickCheckView";
 import { FactGuardView, FACT_GUARD_VIEW_TYPE } from "./FactGuardView";
 import { DeepResearchView, DEEP_RESEARCH_VIEW_TYPE } from "./DeepResearchView";
@@ -16,7 +15,11 @@ export default class ResearchReportPlugin extends Plugin {
   settings: ResearchReportSettings;
   controlPlaneBootstrap: ControlPlaneBootstrap | null = null;
   controlPlaneBootstrapError: string | null = null;
-  private controlPlaneBootstrapPromise: Promise<ControlPlaneBootstrap> | null = null;
+  controlPlaneSession = {
+    accessToken: "",
+    refreshToken: "",
+  };
+  private controlPlaneBootstrapPromise: Promise<ControlPlaneBootstrap | null> | null = null;
 
   async onload() {
     await this.loadSettings();
@@ -101,19 +104,6 @@ export default class ResearchReportPlugin extends Plugin {
       })
     );
 
-    /* ── Legacy Research Report ── */
-    this.addCommand({
-      id: "open-research-report",
-      name: "开始行业研究报告",
-      callback: () => {
-        new ResearchReportModal(this.app, this).open();
-      },
-    });
-    this.addCommand({
-      id: "open-research-report-from-prompt",
-      name: "深度研究（以「深度研究」开头时自动触发）",
-      callback: () => this.openResearchFromPrompt(),
-    });
   }
 
   async activateQuickCheckView(): Promise<void> {
@@ -191,33 +181,6 @@ export default class ResearchReportPlugin extends Plugin {
     }
   }
 
-  private async openResearchFromPrompt() {
-    const TRIGGER = "深度研究";
-    let text = "";
-    const editor = this.app.workspace.activeEditor?.editor;
-    if (editor) {
-      const sel = editor.getSelection();
-      text = sel ? sel.trim() : (editor.getValue() || "").trim();
-    }
-    if (!text) {
-      try {
-        text = (await navigator.clipboard.readText())?.trim() ?? "";
-      } catch {
-        /* clipboard not allowed */
-      }
-    }
-    if (!text) {
-      new Notice("请先选中一段文字或复制以「深度研究」开头的内容");
-      return;
-    }
-    if (!text.startsWith(TRIGGER)) {
-      new Notice(`请确保内容以「${TRIGGER}」开头，当前未检测到`);
-      return;
-    }
-    const topic = text.slice(TRIGGER.length).trim() || text;
-    new ResearchReportModal(this.app, this, topic).open();
-  }
-
   onunload() {}
 
   async refreshControlPlaneBootstrap(silent = false): Promise<ControlPlaneBootstrap | null> {
@@ -266,7 +229,25 @@ export default class ResearchReportPlugin extends Plugin {
   }
 
   async loadSettings() {
-    this.settings = { ...DEFAULT_SETTINGS, ...(await this.loadData()) };
+    const persisted = (await this.loadData()) || {};
+    const {
+      controlPlaneAccessToken: _legacyAccessToken,
+      controlPlaneRefreshToken: _legacyRefreshToken,
+      ...rest
+    } = persisted as Partial<ResearchReportSettings> & {
+      controlPlaneAccessToken?: string;
+      controlPlaneRefreshToken?: string;
+    };
+
+    this.settings = { ...DEFAULT_SETTINGS, ...rest };
+    this.controlPlaneSession = {
+      accessToken: "",
+      refreshToken: "",
+    };
+
+    if (_legacyAccessToken || _legacyRefreshToken) {
+      await this.saveSettings();
+    }
   }
 
   async saveSettings() {

@@ -152,6 +152,23 @@ function buildHeaders(config: RuntimeConfig): Record<string, string> {
   return headers;
 }
 
+function buildRuntimeConfig(plugin: ResearchReportPlugin): RuntimeConfig {
+  const config: RuntimeConfig = {
+    baseUrl: plugin.settings.researchApiBaseUrl,
+    timeout: plugin.settings.quickCheckTimeout,
+    provider: plugin.settings.researchProvider,
+    dashscopeApiKey: plugin.settings.dashscopeApiKey,
+    dashscopeQuickCheckModel: plugin.settings.dashscopeQuickCheckModel,
+    dashscopeDeepResearchModel: plugin.settings.dashscopeDeepResearchModel,
+  };
+
+  if (!config.baseUrl.trim()) {
+    throw new Error("请先在插件设置中填写 Research API 地址。");
+  }
+
+  return config;
+}
+
 /* ── API Calls ── */
 
 export async function createResearchTask(
@@ -170,14 +187,7 @@ export async function createResearchTask(
     return mapControlPlaneTask(query, task);
   }
 
-  const config: RuntimeConfig = {
-    baseUrl: plugin.settings.researchApiBaseUrl,
-    timeout: plugin.settings.quickCheckTimeout,
-    provider: plugin.settings.researchProvider,
-    dashscopeApiKey: plugin.settings.dashscopeApiKey,
-    dashscopeQuickCheckModel: plugin.settings.dashscopeQuickCheckModel,
-    dashscopeDeepResearchModel: plugin.settings.dashscopeDeepResearchModel,
-  };
+  const config = buildRuntimeConfig(plugin);
   const url = `${config.baseUrl.replace(/\/$/, "")}/research/tasks`;
 
   const body = {
@@ -229,14 +239,7 @@ export async function getResearchTask(
     return mapControlPlaneTask(undefined, task);
   }
 
-  const config: RuntimeConfig = {
-    baseUrl: plugin.settings.researchApiBaseUrl,
-    timeout: plugin.settings.quickCheckTimeout,
-    provider: plugin.settings.researchProvider,
-    dashscopeApiKey: plugin.settings.dashscopeApiKey,
-    dashscopeQuickCheckModel: plugin.settings.dashscopeQuickCheckModel,
-    dashscopeDeepResearchModel: plugin.settings.dashscopeDeepResearchModel,
-  };
+  const config = buildRuntimeConfig(plugin);
   const url = `${config.baseUrl.replace(/\/$/, "")}/research/tasks/${taskId}`;
 
   let response;
@@ -276,14 +279,7 @@ export async function confirmResearchTask(
     return getResearchTask(plugin, taskId);
   }
 
-  const config: RuntimeConfig = {
-    baseUrl: plugin.settings.researchApiBaseUrl,
-    timeout: plugin.settings.quickCheckTimeout,
-    provider: plugin.settings.researchProvider,
-    dashscopeApiKey: plugin.settings.dashscopeApiKey,
-    dashscopeQuickCheckModel: plugin.settings.dashscopeQuickCheckModel,
-    dashscopeDeepResearchModel: plugin.settings.dashscopeDeepResearchModel,
-  };
+  const config = buildRuntimeConfig(plugin);
   const url = `${config.baseUrl.replace(/\/$/, "")}/research/tasks/${taskId}/confirm`;
 
   let response;
@@ -325,14 +321,7 @@ export async function cancelResearchTask(
     return mapControlPlaneTask(undefined, task);
   }
 
-  const config: RuntimeConfig = {
-    baseUrl: plugin.settings.researchApiBaseUrl,
-    timeout: plugin.settings.quickCheckTimeout,
-    provider: plugin.settings.researchProvider,
-    dashscopeApiKey: plugin.settings.dashscopeApiKey,
-    dashscopeQuickCheckModel: plugin.settings.dashscopeQuickCheckModel,
-    dashscopeDeepResearchModel: plugin.settings.dashscopeDeepResearchModel,
-  };
+  const config = buildRuntimeConfig(plugin);
   const url = `${config.baseUrl.replace(/\/$/, "")}/research/tasks/${taskId}/cancel`;
 
   let response;
@@ -380,14 +369,7 @@ export async function exportResearchMarkdown(
     throw new Error("服务模式下暂未开放客户端直接导出，请先在结果中查看内容。");
   }
 
-  const config: RuntimeConfig = {
-    baseUrl: plugin.settings.researchApiBaseUrl,
-    timeout: plugin.settings.quickCheckTimeout,
-    provider: plugin.settings.researchProvider,
-    dashscopeApiKey: plugin.settings.dashscopeApiKey,
-    dashscopeQuickCheckModel: plugin.settings.dashscopeQuickCheckModel,
-    dashscopeDeepResearchModel: plugin.settings.dashscopeDeepResearchModel,
-  };
+  const config = buildRuntimeConfig(plugin);
   const url = `${config.baseUrl.replace(/\/$/, "")}/research/tasks/${taskId}/export-markdown`;
 
   const body: { targetFolder?: string } = {};

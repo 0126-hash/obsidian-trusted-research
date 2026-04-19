@@ -11,8 +11,6 @@ export interface ResearchReportSettings {
   controlPlaneEmail: string;
   controlPlanePassword: string;
   controlPlaneClientVersion: string;
-  controlPlaneAccessToken: string;
-  controlPlaneRefreshToken: string;
   controlPlaneDeviceId: string;
   
   /* Beta Configs */
@@ -28,15 +26,13 @@ export const DEFAULT_SETTINGS: ResearchReportSettings = {
   defaultReportFolder: "行业研究",
   maxUrlsToFetch: 20,
   maxCharsPerPage: 50000,
-  researchApiBaseUrl: "http://127.0.0.1:4319",
+  researchApiBaseUrl: "",
   quickCheckTimeout: 30000,
-  serviceMode: "control_plane",
-  controlPlaneBaseUrl: "http://127.0.0.1:4320",
-  controlPlaneEmail: "demo@example.com",
-  controlPlanePassword: "demo123456",
-  controlPlaneClientVersion: "1.0.0",
-  controlPlaneAccessToken: "",
-  controlPlaneRefreshToken: "",
+  serviceMode: "runtime",
+  controlPlaneBaseUrl: "",
+  controlPlaneEmail: "",
+  controlPlanePassword: "",
+  controlPlaneClientVersion: "0.2.0",
   controlPlaneDeviceId: "",
   
   researchProvider: "dashscope",

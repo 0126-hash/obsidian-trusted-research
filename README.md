@@ -1,35 +1,99 @@
-# Research Report（行业研究报告）
+# Trusted Research
 
-Obsidian 插件：结合 Claude 与 Brave 搜索，从话题规划关键词、全文抓取资料并自动整理成报告写入笔记。
+Desktop-only Obsidian plugin for source-aware research workflows:
 
-## 功能
+- `Quick Check`: fast credibility checks for a question against the current note context
+- `Fact Guard`: claim verification against the current note context
+- `Deep Research`: longer-running research tasks with progress, synthesis, and export hooks
 
-- **多轮细化**：根据话题生成关键词与提纲，可编辑后再次「细化」或补充说明
-- **按关键词自动搜集**：Brave 搜索 + URL 全文抓取（失败时用摘要）
-- **补充分析**：结果不满意时可输入补充关键词/说明再搜一轮
-- **一次性完整报告**：固定结构（概述、关键发现、细分维度、风险、资料来源）+ 引用标注
-- **自动写入笔记**：报告保存到默认文件夹（可设置）下的新笔记
+This repo is the plugin client only. It does not bundle the backend services.
 
-## 安装
+## Current scope
 
-1. 在仓库根目录执行：`npm install` 与 `npm run build`
-2. 将整个 `obsidian-research-report` 文件夹复制到 vault 的 `.obsidian/plugins/` 下
-3. 在 Obsidian 设置 → 社区插件中启用「Research Report」
-4. 在插件设置中填写 **Anthropic API Key** 与 **Brave Search API Key**
+- Supported platform: desktop Obsidian only
+- Supported backends:
+  - `Runtime`: direct calls to a research API you host yourself
+  - `Control Plane`: account, device, quota, and capability-aware flow behind your own gateway
+- Not included:
+  - public SaaS endpoint
+  - account service
+  - ready-to-run backend container images
 
-## 使用
+## Local development
 
-1. 命令面板中执行「开始行业研究报告」
-2. 输入研究话题，点击「生成/细化关键词」
-3. 可编辑关键词与提纲，或输入补充说明后点击「补充分析」
-4. 点击「开始搜集」进行搜索与全文抓取
-5. 可选：再次「补充分析」增加资料
-6. 点击「生成报告并写入笔记」，报告将写入默认文件夹下的新笔记
+```bash
+npm install
+npm run build
+```
 
-## 技术说明
+`npm run build` now includes `tsc --noEmit`, so the plugin must stay type-clean before bundling.
 
-- 规划与报告合成：Anthropic Messages API (Claude)
-- 搜索：Brave Search API
-- 全文抓取：fetch + DOMParser 提取正文（Electron 环境可能受 CORS 限制，失败时使用摘要）
+To prepare GitHub release assets:
 
-详见项目根目录 `TECH_SPEC_RESEARCH_REPORT.md`。
+```bash
+npm run release:prepare
+```
+
+See [RELEASING.md](./RELEASING.md) for the release flow and [DEPLOYMENT.md](./DEPLOYMENT.md) for backend expectations.
+
+## Install into Obsidian for local testing
+
+1. Build the plugin in this repo.
+2. Copy `main.js`, `manifest.json`, and `styles.css` into:
+
+```text
+<your-vault>/.obsidian/plugins/research-report/
+```
+
+3. Enable `Trusted Research` in Obsidian Community Plugins.
+
+## Required configuration
+
+Open `Settings -> Community plugins -> Trusted Research`.
+
+### Runtime mode
+
+Fill in:
+
+- `Research API 地址`
+- `模型提供商`
+- provider credentials if your runtime expects them, such as `DashScope API Key`
+
+### Control Plane mode
+
+Fill in:
+
+- `Control Plane 地址`
+- `Control Plane 邮箱`
+- `Control Plane 密码`
+
+Then click `测试登录并拉取 Bootstrap`.
+
+Access and refresh tokens are kept in memory for the current session only. They are no longer persisted in plugin settings.
+
+## Backend expectations
+
+See [DEPLOYMENT.md](./DEPLOYMENT.md).
+
+At a minimum:
+
+- Runtime mode expects HTTP endpoints for Quick Check, Fact Guard, Deep Research, and export.
+- Control Plane mode expects auth, device registration, bootstrap, capability invocation, and task APIs.
+
+## Privacy
+
+The plugin sends the following content to your configured backend:
+
+- the user query
+- current selection
+- current note body
+- current note title and path
+
+Do not enable this plugin against a backend you do not trust with note content.
+
+See [PRIVACY.md](./PRIVACY.md) for the storage model and credential notes.
+
+## Repository notes
+
+- Legacy `Research Report` modal code is still present in the repo for migration purposes, but it is no longer exposed by the public plugin entrypoints.
+- Release metadata is aligned for Obsidian packaging: `manifest.json`, `versions.json`, and semver-compatible version numbers.

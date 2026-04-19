@@ -68,9 +68,6 @@ export async function callFactGuard(
   context: FactGuardContext
 ): Promise<FactGuardResult> {
   if (plugin.settings.serviceMode === "control_plane") {
-    // NOTE: fact_guard capability requires BOTH userQuery and claim per 0f2e062 contract.
-    // ControlPlaneContext interface doesn't declare `claim`, so we cast via `unknown`.
-    // Do NOT "clean up" this cast by dropping `claim` — the backend will reject with MISSING_QUERY.
     const cpContext = {
       userQuery: query,
       claim: query,
@@ -78,7 +75,7 @@ export async function callFactGuard(
       documentExcerpt: context.documentContent || undefined,
       documentTitle: context.documentTitle || undefined,
       documentPath: context.documentPath || undefined,
-    } as unknown as ControlPlaneContext;
+    } satisfies ControlPlaneContext;
 
     const raw = await invokeControlPlaneCapability<FactGuardControlPlaneRawResponse>(
       plugin,
@@ -102,6 +99,10 @@ export async function callFactGuard(
     provider: plugin.settings.researchProvider,
     dashscopeApiKey: plugin.settings.dashscopeApiKey,
   };
+
+  if (!config.baseUrl.trim()) {
+    throw new Error("请先在插件设置中填写 Research API 地址。");
+  }
 
   const url = `${config.baseUrl.replace(/\/$/, "")}/research/fact-guard`;
   const body = {

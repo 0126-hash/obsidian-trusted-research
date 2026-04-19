@@ -1,14 +1,20 @@
 {
-  "name": "obsidian-research-report",
-  "version": "0.1.0",
-  "description": "Industry research report: plan keywords, fetch full-text, synthesize with Claude, auto-write to note.",
+  "name": "obsidian-trusted-research",
+  "version": "0.2.0",
+  "description": "Trusted Research plugin for Obsidian: Quick Check, Fact Guard, and Deep Research with Runtime or Control Plane backends.",
   "main": "main.js",
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "node esbuild.config.mjs",
-    "build": "node esbuild.config.mjs production"
+    "version:bump": "node scripts/version-bump.mjs",
+    "typecheck": "tsc --noEmit",
+    "build": "npm run typecheck && node esbuild.config.mjs production",
+    "release:prepare": "npm run build && node scripts/package-release.mjs"
   },
-  "keywords": ["obsidian", "plugin", "research", "claude"],
+  "keywords": ["obsidian", "plugin", "research", "fact-checking"],
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^20.0.0",

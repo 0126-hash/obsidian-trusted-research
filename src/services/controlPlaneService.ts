@@ -5,6 +5,7 @@ import type ResearchReportPlugin from "../main";
 
 export interface ControlPlaneContext {
   userQuery: string;
+  claim?: string;
   selection?: string;
   documentExcerpt?: string;
   documentTitle?: string;
@@ -69,7 +70,7 @@ function trimTrailingSlash(value: string): string {
 }
 
 function getBaseUrl(plugin: ResearchReportPlugin): string {
-  return trimTrailingSlash(plugin.settings.controlPlaneBaseUrl || "http://127.0.0.1:4320");
+  return trimTrailingSlash(plugin.settings.controlPlaneBaseUrl);
 }
 
 function getClientVersion(plugin: ResearchReportPlugin): string {
@@ -84,6 +85,31 @@ async function persistSettings(plugin: ResearchReportPlugin): Promise<void> {
   await plugin.saveSettings();
 }
 
+function ensureConfiguredBaseUrl(plugin: ResearchReportPlugin): string {
+  const baseUrl = getBaseUrl(plugin);
+  if (!baseUrl) {
+    throw new Error("请先在插件设置中填写 Control Plane 地址。");
+  }
+  return baseUrl;
+}
+
+function getAccessToken(plugin: ResearchReportPlugin): string {
+  return plugin.controlPlaneSession.accessToken;
+}
+
+function getRefreshToken(plugin: ResearchReportPlugin): string {
+  return plugin.controlPlaneSession.refreshToken;
+}
+
+function setSessionTokens(
+  plugin: ResearchReportPlugin,
+  accessToken = "",
+  refreshToken = ""
+): void {
+  plugin.controlPlaneSession.accessToken = accessToken;
+  plugin.controlPlaneSession.refreshToken = refreshToken;
+}
+
 async function requestJson<T = any>(
   plugin: ResearchReportPlugin,
   path: string,
@@ -94,7 +120,7 @@ async function requestJson<T = any>(
     timeout?: number;
   } = {}
 ): Promise<JsonResponse<T>> {
-  const url = `${getBaseUrl(plugin)}${path}`;
+  const url = `${ensureConfiguredBaseUrl(plugin)}${path}`;
   const method = options.method || "GET";
   const headers = {
     "Content-Type": "application/json",
@@ -227,13 +253,11 @@ async function login(plugin: ResearchReportPlugin): Promise<void> {
     throw new Error(getErrorMessage(response, "登录 Control Plane 失败。"));
   }
 
-  plugin.settings.controlPlaneAccessToken = response.data.accessToken || "";
-  plugin.settings.controlPlaneRefreshToken = response.data.refreshToken || "";
-  await persistSettings(plugin);
+  setSessionTokens(plugin, response.data.accessToken || "", response.data.refreshToken || "");
 }
 
 async function refresh(plugin: ResearchReportPlugin): Promise<boolean> {
-  if (!plugin.settings.controlPlaneRefreshToken) {
+  if (!getRefreshToken(plugin)) {
     return false;
   }
 
@@ -244,28 +268,25 @@ async function refresh(plugin: ResearchReportPlugin): Promise<boolean> {
   }>(plugin, "/api/v1/auth/refresh", {
     method: "POST",
     body: {
-      refreshToken: plugin.settings.controlPlaneRefreshToken,
+      refreshToken: getRefreshToken(plugin),
     },
   });
 
   if (!response.ok) {
-    plugin.settings.controlPlaneAccessToken = "";
-    plugin.settings.controlPlaneRefreshToken = "";
-    await persistSettings(plugin);
+    setSessionTokens(plugin);
     return false;
   }
 
-  plugin.settings.controlPlaneAccessToken = response.data.accessToken || "";
-  plugin.settings.controlPlaneRefreshToken = response.data.refreshToken || "";
+  setSessionTokens(plugin, response.data.accessToken || "", response.data.refreshToken || "");
   if (response.data.session?.deviceId) {
     plugin.settings.controlPlaneDeviceId = response.data.session.deviceId;
+    await persistSettings(plugin);
   }
-  await persistSettings(plugin);
   return true;
 }
 
 async function ensureAccessToken(plugin: ResearchReportPlugin): Promise<void> {
-  if (plugin.settings.controlPlaneAccessToken) {
+  if (getAccessToken(plugin)) {
     return;
   }
 
@@ -283,17 +304,17 @@ async function registerDevice(plugin: ResearchReportPlugin): Promise<string> {
   }>(plugin, "/api/v1/devices/register", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${plugin.settings.controlPlaneAccessToken}`,
+      Authorization: `Bearer ${getAccessToken(plugin)}`,
     },
     body: {
-      name: "Research Report",
+      name: plugin.manifest.name,
       platform: "macos",
       clientVersion: getClientVersion(plugin),
     },
   });
 
   if (response.status === 401) {
-    plugin.settings.controlPlaneAccessToken = "";
+    setSessionTokens(plugin, "", getRefreshToken(plugin));
     if (!(await refresh(plugin))) {
       await login(plugin);
     }
@@ -311,7 +332,7 @@ async function registerDevice(plugin: ResearchReportPlugin): Promise<string> {
 
 function buildAuthedHeaders(plugin: ResearchReportPlugin, withDevice = true): Record<string, string> {
   const headers: Record<string, string> = {
-    Authorization: `Bearer ${plugin.settings.controlPlaneAccessToken}`,
+    Authorization: `Bearer ${getAccessToken(plugin)}`,
   };
 
   if (withDevice && getStoredDeviceId(plugin)) {
@@ -346,8 +367,7 @@ async function requestAuthed<T = any>(
   let response = await execute();
 
   if (response.status === 401) {
-    plugin.settings.controlPlaneAccessToken = "";
-    await persistSettings(plugin);
+    setSessionTokens(plugin, "", getRefreshToken(plugin));
     const refreshed = await refresh(plugin);
     if (!refreshed) {
       await login(plugin);
