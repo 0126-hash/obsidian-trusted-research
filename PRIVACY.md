@@ -5,8 +5,8 @@ Trusted Research sends user content to the backend service you configure.
 ## Data that may be sent
 
 - user query
-- current selection
-- current note body
+- current selection (truncated to 8000 chars on the client)
+- current note body (truncated to the configured document context limit on the client)
 - current note title
 - current note path
 - account email and password for Control Plane login
