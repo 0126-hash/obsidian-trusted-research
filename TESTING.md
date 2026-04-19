@@ -31,8 +31,8 @@ Target directory:
 
 1. Open plugin settings.
 2. Set `服务模式` to `Runtime 兼容模式`.
-3. Fill `Research API 地址`.
-4. If using DashScope, fill `DashScope API Key`.
+3. For local mock testing, start `npm run runtime:mock` and fill `Research API 地址` with `http://127.0.0.1:8787`.
+4. Set `模型提供商` to `本地 Mock（离线调试）`, or fill provider credentials if using your own Runtime.
 5. Open a note with non-empty content.
 6. Run `Quick Check` and verify:
    - request succeeds

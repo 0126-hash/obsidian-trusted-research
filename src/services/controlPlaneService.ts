@@ -353,6 +353,7 @@ async function requestAuthed<T = any>(
     method?: string;
     body?: any;
     withDevice?: boolean;
+    timeout?: number;
   } = {}
 ): Promise<JsonResponse<T>> {
   await ensureAccessToken(plugin);
@@ -362,6 +363,7 @@ async function requestAuthed<T = any>(
       method: options.method,
       headers: buildAuthedHeaders(plugin, options.withDevice !== false),
       body: options.body,
+      timeout: options.timeout,
     });
 
   let response = await execute();
@@ -417,7 +419,10 @@ export function getCapabilityFromBootstrap(
 export async function invokeControlPlaneCapability<T = any>(
   plugin: ResearchReportPlugin,
   capabilityKey: string,
-  context: ControlPlaneContext
+  context: ControlPlaneContext,
+  options: {
+    timeout?: number;
+  } = {}
 ): Promise<T> {
   await ensureControlPlaneBootstrap(plugin);
 
@@ -433,6 +438,7 @@ export async function invokeControlPlaneCapability<T = any>(
     body: {
       context,
     },
+    timeout: options.timeout,
   });
 
   if (!response.ok) {
@@ -445,7 +451,10 @@ export async function invokeControlPlaneCapability<T = any>(
 export async function createControlPlaneTask(
   plugin: ResearchReportPlugin,
   capabilityKey: string,
-  context: ControlPlaneContext
+  context: ControlPlaneContext,
+  options: {
+    timeout?: number;
+  } = {}
 ): Promise<any> {
   await ensureControlPlaneBootstrap(plugin);
 
@@ -455,6 +464,7 @@ export async function createControlPlaneTask(
       capabilityKey,
       context,
     },
+    timeout: options.timeout,
   });
 
   if (!response.ok || !response.data?.task) {
@@ -464,12 +474,18 @@ export async function createControlPlaneTask(
   return response.data.task;
 }
 
-export async function getControlPlaneTask(plugin: ResearchReportPlugin, taskId: string): Promise<any> {
+export async function getControlPlaneTask(
+  plugin: ResearchReportPlugin,
+  taskId: string,
+  options: {
+    timeout?: number;
+  } = {}
+): Promise<any> {
   await ensureControlPlaneBootstrap(plugin);
   const response = await requestAuthed<{ task: any }>(
     plugin,
     `/api/v1/tasks/${encodeURIComponent(taskId)}`,
-    { method: "GET" }
+    { method: "GET", timeout: options.timeout }
   );
 
   if (!response.ok || !response.data?.task) {
@@ -479,12 +495,18 @@ export async function getControlPlaneTask(plugin: ResearchReportPlugin, taskId: 
   return response.data.task;
 }
 
-export async function cancelControlPlaneTask(plugin: ResearchReportPlugin, taskId: string): Promise<any> {
+export async function cancelControlPlaneTask(
+  plugin: ResearchReportPlugin,
+  taskId: string,
+  options: {
+    timeout?: number;
+  } = {}
+): Promise<any> {
   await ensureControlPlaneBootstrap(plugin);
   const response = await requestAuthed<{ task: any }>(
     plugin,
     `/api/v1/tasks/${encodeURIComponent(taskId)}/cancel`,
-    { method: "POST", body: {} }
+    { method: "POST", body: {}, timeout: options.timeout }
   );
 
   if (!response.ok || !response.data?.task) {

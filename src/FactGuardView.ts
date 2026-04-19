@@ -140,29 +140,180 @@ export class FactGuardView extends QuickCheckView {
     if (!items?.length) return;
     const section = container.createDiv({ cls: "qc-section" });
     section.createDiv({ cls: "qc-section-label", text: label });
-    const list = section.createEl("ul", { cls: "qc-evidence-list" });
+    const list = section.createDiv({ cls: "qc-evidence-stack" });
     for (const item of items) {
-      let displayText: string;
       if (typeof item === "string") {
-        displayText = item;
-      } else if (item && typeof item === "object") {
-        const title = item.title || item.source || "";
-        const body =
-          item.snippet ||
-          item.quote ||
-          item.excerpt ||
-          item.text ||
-          item.content ||
-          item.credibilityNote ||
-          item.description ||
-          item.claim ||
-          "";
-        displayText =
-          title && body ? `${title} — ${body}` : body || title || JSON.stringify(item);
-      } else {
-        displayText = String(item);
+        list.createDiv({ cls: "qc-uncertainty-block", text: item });
+        continue;
       }
-      list.createEl("li", { text: displayText });
+      if (item && typeof item === "object") {
+        this.renderEvidenceCard(list, item);
+      } else {
+        list.createDiv({ cls: "qc-uncertainty-block", text: String(item) });
+      }
+    }
+  }
+
+  private renderEvidenceCard(parent: HTMLElement, item: FactGuardEvidenceItem): void {
+    const card = parent.createDiv({ cls: "qc-source-card" });
+    const cardHeader = card.createDiv({ cls: "qc-source-header" });
+
+    const typeIcon = cardHeader.createSpan({ cls: "qc-source-type-icon" });
+    setIcon(typeIcon, this.getEvidenceIcon(item.sourceType));
+
+    const headerMain = cardHeader.createDiv({ cls: "qc-source-header-main" });
+    headerMain.createSpan({
+      cls: "qc-source-title",
+      text: item.title || item.source || item.claim || "未命名证据",
+    });
+
+    const badgeRow = headerMain.createDiv({ cls: "qc-source-badges" });
+    if (item.sourceType) {
+      badgeRow.createSpan({
+        cls: "qc-source-badge",
+        text: this.getSourceTypeLabel(item.sourceType),
+      });
+    }
+    if (item.timeSensitivity) {
+      badgeRow.createSpan({
+        cls: `qc-source-badge qc-source-badge-${item.timeSensitivity}`,
+        text: this.getTimeSensitivityLabel(item.timeSensitivity),
+      });
+    }
+
+    const expandIcon = cardHeader.createSpan({ cls: "qc-source-expand" });
+    setIcon(expandIcon, "chevron-down");
+
+    const cardBody = card.createDiv({ cls: "qc-source-body" });
+    cardBody.style.display = "none";
+
+    const snippet =
+      item.snippet ||
+      item.quote ||
+      item.excerpt ||
+      item.text ||
+      item.content ||
+      item.description ||
+      item.claim ||
+      "";
+    if (snippet) {
+      cardBody.createDiv({
+        cls: "qc-source-snippet",
+        text: snippet,
+      });
+    }
+
+    if (item.credibilityNote) {
+      cardBody.createDiv({
+        cls: "qc-source-credibility",
+        text: item.credibilityNote,
+      });
+    }
+
+    if (item.supportsClaims?.length || item.conflictsWithClaims?.length) {
+      const claimList = cardBody.createDiv({ cls: "qc-claim-list" });
+      for (const claim of item.supportsClaims || []) {
+        claimList.createSpan({
+          cls: "qc-claim-chip qc-claim-chip-support",
+          text: `支持: ${claim}`,
+        });
+      }
+      for (const claim of item.conflictsWithClaims || []) {
+        claimList.createSpan({
+          cls: "qc-claim-chip qc-claim-chip-conflict",
+          text: `冲突: ${claim}`,
+        });
+      }
+    }
+
+    const meta = cardBody.createDiv({ cls: "qc-source-meta" });
+    if (item.locator?.url) {
+      const urlRow = meta.createDiv({ cls: "qc-source-link-row" });
+      const urlIcon = urlRow.createSpan({ cls: "qc-source-type-icon" });
+      setIcon(urlIcon, "external-link");
+      const linkEl = urlRow.createEl("a", {
+        cls: "qc-source-link",
+        text: item.locator.url,
+        href: item.locator.url,
+      });
+      linkEl.setAttr("target", "_blank");
+      linkEl.addEventListener("click", (event) => {
+        event.preventDefault();
+        window.open(item.locator?.url || "", "_blank");
+      });
+    }
+    if (item.locator?.filePath) {
+      meta.createDiv({
+        cls: "qc-source-path",
+        text: `📂 ${item.locator.filePath}`,
+      });
+    }
+    if (item.locator?.section) {
+      meta.createDiv({
+        cls: "qc-source-path",
+        text: `§ ${item.locator.section}`,
+      });
+    }
+    if (item.publishedAt) {
+      meta.createDiv({
+        cls: "qc-source-date",
+        text: `📅 发布于 ${item.publishedAt}`,
+      });
+    }
+    if (item.retrievedAt) {
+      meta.createDiv({
+        cls: "qc-source-date",
+        text: `🕒 抓取于 ${item.retrievedAt}`,
+      });
+    }
+
+    cardHeader.addEventListener("click", () => {
+      const isOpen = cardBody.style.display !== "none";
+      cardBody.style.display = isOpen ? "none" : "block";
+      expandIcon.empty();
+      setIcon(expandIcon, isOpen ? "chevron-down" : "chevron-up");
+    });
+  }
+
+  private getEvidenceIcon(sourceType?: string): string {
+    switch (sourceType) {
+      case "web":
+        return "globe";
+      case "note":
+        return "sticky-note";
+      case "manual":
+        return "pen-tool";
+      case "document":
+      default:
+        return "file-text";
+    }
+  }
+
+  private getSourceTypeLabel(sourceType: string): string {
+    switch (sourceType) {
+      case "web":
+        return "网页";
+      case "note":
+        return "笔记";
+      case "manual":
+        return "手工输入";
+      case "document":
+        return "文档";
+      default:
+        return sourceType;
+    }
+  }
+
+  private getTimeSensitivityLabel(value: string): string {
+    switch (value) {
+      case "high":
+        return "高时效";
+      case "medium":
+        return "中时效";
+      case "low":
+        return "低时效";
+      default:
+        return value;
     }
   }
 

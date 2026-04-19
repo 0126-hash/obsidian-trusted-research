@@ -1,7 +1,7 @@
 {
   "id": "research-report",
   "name": "Trusted Research",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "minAppVersion": "0.15.0",
   "description": "桌面版可信研究插件，提供 Quick Check、Fact Guard 和 Deep Research，并支持 Runtime 与 Control Plane 两种后端模式。",
   "author": "xuziming",

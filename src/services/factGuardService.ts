@@ -1,6 +1,7 @@
 import type ResearchReportPlugin from "../main";
 import { invokeControlPlaneCapability, type ControlPlaneContext } from "./controlPlaneService";
 import { getErrorMessage, requestUrlWithTimeout, type QuickCheckContext } from "./quickCheckService";
+import { prepareResearchContext } from "./contextUtils";
 
 export type FactGuardContext = QuickCheckContext;
 
@@ -9,6 +10,7 @@ export interface FactGuardEvidenceItem {
   sourceType?: string;
   title?: string;
   locator?: Record<string, string | undefined>;
+  publishedAt?: string;
   retrievedAt?: string;
   snippet?: string;
   credibilityNote?: string;
@@ -67,20 +69,25 @@ export async function callFactGuard(
   query: string,
   context: FactGuardContext
 ): Promise<FactGuardResult> {
+  const preparedContext = prepareResearchContext(plugin.settings, context);
+
   if (plugin.settings.serviceMode === "control_plane") {
     const cpContext = {
       userQuery: query,
       claim: query,
-      selection: context.selectedText || undefined,
-      documentExcerpt: context.documentContent || undefined,
-      documentTitle: context.documentTitle || undefined,
-      documentPath: context.documentPath || undefined,
+      selection: preparedContext.selectedText,
+      documentExcerpt: preparedContext.documentContent,
+      documentTitle: preparedContext.documentTitle,
+      documentPath: preparedContext.documentPath,
     } satisfies ControlPlaneContext;
 
     const raw = await invokeControlPlaneCapability<FactGuardControlPlaneRawResponse>(
       plugin,
       "research.fact_guard",
-      cpContext
+      cpContext,
+      {
+        timeout: plugin.settings.factGuardTimeout,
+      }
     );
 
     return {
@@ -95,9 +102,10 @@ export async function callFactGuard(
 
   const config = {
     baseUrl: plugin.settings.researchApiBaseUrl,
-    timeout: plugin.settings.quickCheckTimeout,
+    timeout: plugin.settings.factGuardTimeout,
     provider: plugin.settings.researchProvider,
     dashscopeApiKey: plugin.settings.dashscopeApiKey,
+    dashscopeFactGuardModel: plugin.settings.dashscopeFactGuardModel,
   };
 
   if (!config.baseUrl.trim()) {
@@ -108,10 +116,10 @@ export async function callFactGuard(
   const body = {
     claim: query,
     context: {
-      selectedText: context.selectedText || undefined,
-      documentContent: context.documentContent || undefined,
-      documentTitle: context.documentTitle || undefined,
-      documentPath: context.documentPath || undefined,
+      selectedText: preparedContext.selectedText,
+      documentContent: preparedContext.documentContent,
+      documentTitle: preparedContext.documentTitle,
+      documentPath: preparedContext.documentPath,
     },
   };
 
@@ -121,6 +129,9 @@ export async function callFactGuard(
   };
   if (config.provider === "dashscope" && config.dashscopeApiKey) {
     headers["X-DashScope-API-Key"] = config.dashscopeApiKey;
+  }
+  if (config.provider === "dashscope" && config.dashscopeFactGuardModel) {
+    headers["X-Fact-Guard-Model"] = config.dashscopeFactGuardModel;
   }
 
   let response;

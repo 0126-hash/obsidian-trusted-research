@@ -6,6 +6,10 @@ export interface ResearchReportSettings {
   maxCharsPerPage: number;
   researchApiBaseUrl: string;
   quickCheckTimeout: number;
+  factGuardTimeout: number;
+  deepResearchTimeout: number;
+  deepResearchExportTimeout: number;
+  maxDocumentContextChars: number;
   serviceMode: "runtime" | "control_plane";
   controlPlaneBaseUrl: string;
   controlPlaneEmail: string;
@@ -17,6 +21,7 @@ export interface ResearchReportSettings {
   researchProvider: "local_mock" | "dashscope";
   dashscopeApiKey: string;
   dashscopeQuickCheckModel: string;
+  dashscopeFactGuardModel: string;
   dashscopeDeepResearchModel: string;
 }
 
@@ -28,6 +33,10 @@ export const DEFAULT_SETTINGS: ResearchReportSettings = {
   maxCharsPerPage: 50000,
   researchApiBaseUrl: "",
   quickCheckTimeout: 30000,
+  factGuardTimeout: 30000,
+  deepResearchTimeout: 45000,
+  deepResearchExportTimeout: 60000,
+  maxDocumentContextChars: 12000,
   serviceMode: "runtime",
   controlPlaneBaseUrl: "",
   controlPlaneEmail: "",
@@ -38,5 +47,6 @@ export const DEFAULT_SETTINGS: ResearchReportSettings = {
   researchProvider: "dashscope",
   dashscopeApiKey: "",
   dashscopeQuickCheckModel: "qwen-flash",
+  dashscopeFactGuardModel: "qwen-flash",
   dashscopeDeepResearchModel: "qwen-plus",
 };

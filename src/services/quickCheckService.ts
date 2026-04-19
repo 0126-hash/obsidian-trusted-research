@@ -1,6 +1,7 @@
 import { requestUrl, type RequestUrlParam, type RequestUrlResponse } from "obsidian";
 import type ResearchReportPlugin from "../main";
 import { invokeControlPlaneCapability } from "./controlPlaneService";
+import { prepareResearchContext, type ResearchContextInput } from "./contextUtils";
 
 /**
  * Wrap Obsidian's requestUrl with a client-side timeout via Promise.race.
@@ -40,12 +41,7 @@ export interface RuntimeConfig {
   dashscopeDeepResearchModel: string;
 }
 
-export interface QuickCheckContext {
-  selectedText?: string;
-  documentContent?: string;
-  documentTitle?: string;
-  documentPath?: string;
-}
+export interface QuickCheckContext extends ResearchContextInput {}
 
 export interface QuickCheckSource {
   id: string;
@@ -117,6 +113,8 @@ export async function callQuickCheck(
   query: string,
   context: QuickCheckContext
 ): Promise<QuickCheckResult> {
+  const preparedContext = prepareResearchContext(plugin.settings, context);
+
   if (plugin.settings.serviceMode === "control_plane") {
     const result = await invokeControlPlaneCapability<{
       summary: string;
@@ -125,13 +123,20 @@ export async function callQuickCheck(
       sources?: QuickCheckSource[];
       confidenceNote?: string;
       timeSensitivity?: string;
-    }>(plugin, "research.quick_check", {
-      userQuery: query,
-      selection: context.selectedText || undefined,
-      documentExcerpt: context.documentContent || undefined,
-      documentTitle: context.documentTitle || undefined,
-      documentPath: context.documentPath || undefined,
-    });
+    }>(
+      plugin,
+      "research.quick_check",
+      {
+        userQuery: query,
+        selection: preparedContext.selectedText,
+        documentExcerpt: preparedContext.documentContent,
+        documentTitle: preparedContext.documentTitle,
+        documentPath: preparedContext.documentPath,
+      },
+      {
+        timeout: plugin.settings.quickCheckTimeout,
+      }
+    );
 
     return {
       query,
@@ -162,10 +167,10 @@ export async function callQuickCheck(
   const body = {
     query,
     context: {
-      selectedText: context.selectedText || undefined,
-      documentContent: context.documentContent || undefined,
-      documentTitle: context.documentTitle || undefined,
-      documentPath: context.documentPath || undefined,
+      selectedText: preparedContext.selectedText,
+      documentContent: preparedContext.documentContent,
+      documentTitle: preparedContext.documentTitle,
+      documentPath: preparedContext.documentPath,
     },
   };
 

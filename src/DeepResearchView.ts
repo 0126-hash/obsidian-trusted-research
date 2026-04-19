@@ -15,6 +15,8 @@ import {
 export const DEEP_RESEARCH_VIEW_TYPE = "deep-research-view";
 
 const POLL_INTERVAL_MS = 1000;
+const MAX_POLL_RETRY_COUNT = 3;
+const MAX_POLL_BACKOFF_MS = 5000;
 
 type ViewPhase =
   | "idle"
@@ -32,7 +34,10 @@ export class DeepResearchView extends ItemView {
   private phase: ViewPhase = "idle";
   private currentTask: ResearchTask | null = null;
   private currentError: string | null = null;
-  private pollTimer: ReturnType<typeof setInterval> | null = null;
+  private pollTimer: ReturnType<typeof setTimeout> | null = null;
+  private pollInFlight = false;
+  private pollRetryCount = 0;
+  private transientStatusMessage: string | null = null;
   private lastExportPath: string | null = null;
 
   /* DOM refs */
@@ -255,6 +260,11 @@ export class DeepResearchView extends ItemView {
       return;
     }
 
+    if (this.currentTask && !isTerminalStatus(this.currentTask.status)) {
+      new Notice("已有研究任务在运行，请先取消当前任务或等待完成。", 5000);
+      return;
+    }
+
     const ctx = this.getContext();
     if (!ctx.selectedText && !ctx.documentContent && !ctx.documentTitle) {
       this.showError("需要提供上下文：请打开一篇文档或选中一段文本");
@@ -270,6 +280,11 @@ export class DeepResearchView extends ItemView {
       }
     }
 
+    this.stopPolling();
+    this.currentError = null;
+    this.transientStatusMessage = null;
+    this.pollRetryCount = 0;
+    this.lastExportPath = null;
     this.setPhase("drafting_plan");
 
     try {
@@ -286,7 +301,7 @@ export class DeepResearchView extends ItemView {
       );
       this.currentTask = task;
       this.syncPhaseFromTask(task);
-      this.startPolling();
+      this.startPolling(true);
     } catch (err) {
       this.showError(
         err instanceof Error ? err.message : "创建研究任务失败"
@@ -297,13 +312,15 @@ export class DeepResearchView extends ItemView {
   private async doConfirm(): Promise<void> {
     if (!this.currentTask) return;
     try {
+      this.currentError = null;
+      this.transientStatusMessage = null;
       const task = await confirmResearchTask(
         this.plugin,
         this.currentTask.id
       );
       this.currentTask = task;
       this.syncPhaseFromTask(task);
-      this.startPolling();
+      this.startPolling(true);
     } catch (err) {
       this.showError(
         err instanceof Error ? err.message : "确认计划失败"
@@ -315,6 +332,7 @@ export class DeepResearchView extends ItemView {
     if (!this.currentTask) return;
     this.stopPolling();
     try {
+      this.transientStatusMessage = null;
       const task = await cancelResearchTask(
         this.plugin,
         this.currentTask.id
@@ -331,22 +349,35 @@ export class DeepResearchView extends ItemView {
 
   /* ── Polling ── */
 
-  private startPolling(): void {
+  private shouldPollCurrentPhase(): boolean {
+    return (
+      this.phase === "drafting_plan" ||
+      this.phase === "awaiting_confirmation" ||
+      this.phase === "running" ||
+      this.phase === "synthesizing"
+    );
+  }
+
+  private getNextPollDelay(): number {
+    if (this.pollRetryCount <= 0) {
+      return POLL_INTERVAL_MS;
+    }
+    return Math.min(POLL_INTERVAL_MS * 2 ** this.pollRetryCount, MAX_POLL_BACKOFF_MS);
+  }
+
+  private startPolling(immediate = false): void {
     this.stopPolling();
-    if (
-      this.phase !== "drafting_plan" &&
-      this.phase !== "awaiting_confirmation" &&
-      this.phase !== "running" &&
-      this.phase !== "synthesizing"
-    ) {
+    if (!this.currentTask || !this.shouldPollCurrentPhase()) {
       return;
     }
-    this.pollTimer = setInterval(() => this.pollTask(), POLL_INTERVAL_MS);
+    this.pollTimer = setTimeout(() => {
+      void this.pollTask();
+    }, immediate ? 0 : this.getNextPollDelay());
   }
 
   private stopPolling(): void {
     if (this.pollTimer) {
-      clearInterval(this.pollTimer);
+      clearTimeout(this.pollTimer);
       this.pollTimer = null;
     }
   }
@@ -357,12 +388,26 @@ export class DeepResearchView extends ItemView {
       return;
     }
 
+    if (this.pollInFlight) {
+      return;
+    }
+
+    const taskId = this.currentTask.id;
+    this.pollInFlight = true;
+    this.stopPolling();
+
     try {
       const task = await getResearchTask(
         this.plugin,
-        this.currentTask.id
+        taskId
       );
+      if (!this.currentTask || this.currentTask.id !== taskId) {
+        return;
+      }
       this.currentTask = task;
+      this.currentError = null;
+      this.transientStatusMessage = null;
+      this.pollRetryCount = 0;
       if (this.plugin.settings.serviceMode === "control_plane" && isTerminalStatus(task.status)) {
         await this.refreshServiceStatus();
       }
@@ -370,13 +415,47 @@ export class DeepResearchView extends ItemView {
 
       if (isTerminalStatus(task.status)) {
         this.stopPolling();
+      } else {
+        this.startPolling();
       }
     } catch (err) {
-      this.stopPolling();
-      this.showError(
-        err instanceof Error ? err.message : "获取任务状态失败"
-      );
+      if (!this.currentTask || this.currentTask.id !== taskId) {
+        return;
+      }
+
+      const message = err instanceof Error ? err.message : "获取任务状态失败";
+      this.pollRetryCount += 1;
+
+      if (this.pollRetryCount > MAX_POLL_RETRY_COUNT) {
+        this.showError(`${message}。后台任务可能仍在继续，请点击“刷新状态”继续跟踪。`);
+        return;
+      }
+
+      const retryDelay = this.getNextPollDelay();
+      this.currentError = null;
+      this.transientStatusMessage = `状态刷新失败，将在 ${Math.max(
+        1,
+        Math.ceil(retryDelay / 1000)
+      )} 秒后自动重试。`;
+      this.renderBody();
+      this.startPolling();
+    } finally {
+      this.pollInFlight = false;
     }
+  }
+
+  private async refreshTaskStatus(): Promise<void> {
+    if (!this.currentTask) return;
+    if (this.pollInFlight) {
+      new Notice("正在刷新任务状态，请稍候。", 3000);
+      return;
+    }
+    this.currentError = null;
+    this.transientStatusMessage = null;
+    if (!isTerminalStatus(this.currentTask.status) && this.phase === "error") {
+      this.syncPhaseFromTask(this.currentTask);
+    }
+    await this.pollTask();
   }
 
   /* ── State Management ── */
@@ -401,7 +480,9 @@ export class DeepResearchView extends ItemView {
   }
 
   private showError(message: string): void {
+    this.stopPolling();
     this.currentError = message;
+    this.transientStatusMessage = null;
     this.setPhase("error");
   }
 
@@ -409,6 +490,8 @@ export class DeepResearchView extends ItemView {
     this.stopPolling();
     this.currentTask = null;
     this.currentError = null;
+    this.pollRetryCount = 0;
+    this.transientStatusMessage = null;
     this.lastExportPath = null;
     this.inputEl.value = "";
     this.setPhase("idle");
@@ -471,6 +554,7 @@ export class DeepResearchView extends ItemView {
     const spinner = el.createDiv({ cls: "dr-spinner" });
     for (let i = 0; i < 3; i++) spinner.createDiv({ cls: "dr-spinner-dot" });
     el.createEl("p", { cls: "dr-status-text", text: "正在生成研究计划…" });
+    this.renderInlineStatusMessage(el);
     const skeleton = el.createDiv({ cls: "dr-skeleton" });
     for (let i = 0; i < 3; i++) skeleton.createDiv({ cls: "dr-skeleton-line" });
   }
@@ -525,6 +609,7 @@ export class DeepResearchView extends ItemView {
     }
 
     /* Action buttons */
+    this.renderInlineStatusMessage(el);
     const actions = el.createDiv({ cls: "dr-plan-actions" });
 
     const confirmBtn = actions.createEl("button", {
@@ -564,6 +649,7 @@ export class DeepResearchView extends ItemView {
       this.phase === "synthesizing" ? "正在生成研究摘要" : "研究执行中"
     );
     el.createEl("p", { cls: "dr-status-text", text: stepLabel });
+    this.renderInlineStatusMessage(el);
 
     /* Stats */
     if (task?.progress) {
@@ -588,7 +674,9 @@ export class DeepResearchView extends ItemView {
       cls: "dr-btn-cancel-sm",
       text: "刷新状态",
     });
-    refreshBtn.addEventListener("click", () => this.pollTask());
+    refreshBtn.addEventListener("click", () => {
+      void this.refreshTaskStatus();
+    });
     const cancelBtn = actions.createEl("button", {
       cls: "dr-btn-cancel-sm",
       text: "取消研究",
@@ -943,8 +1031,25 @@ export class DeepResearchView extends ItemView {
     });
     const retryBtn = el.createEl("button", {
       cls: "dr-action-btn dr-action-retry",
-      text: "重试",
+      text:
+        this.currentTask && !isTerminalStatus(this.currentTask.status) ? "刷新状态" : "重试",
     });
-    retryBtn.addEventListener("click", () => this.startResearch());
+    retryBtn.addEventListener("click", () => {
+      if (this.currentTask && !isTerminalStatus(this.currentTask.status)) {
+        void this.refreshTaskStatus();
+        return;
+      }
+      void this.startResearch();
+    });
+  }
+
+  private renderInlineStatusMessage(parent: HTMLElement): void {
+    if (!this.transientStatusMessage) {
+      return;
+    }
+    parent.createDiv({
+      cls: "dr-inline-warning",
+      text: this.transientStatusMessage,
+    });
   }
 }

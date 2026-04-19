@@ -8,6 +8,10 @@ Desktop-only Obsidian plugin for source-aware research workflows:
 
 This repo is the plugin client only. It does not bundle the backend services.
 
+For local beta testing, the repo now includes a minimal runnable mock Runtime in [deploy/mock-runtime.mjs](./deploy/mock-runtime.mjs).
+
+For GitHub prerelease installs, see [BETA_TESTING.md](./BETA_TESTING.md).
+
 ## Current scope
 
 - Supported platform: desktop Obsidian only
@@ -34,6 +38,12 @@ To prepare GitHub release assets:
 npm run release:prepare
 ```
 
+To run the local mock Runtime for plugin testing:
+
+```bash
+npm run runtime:mock
+```
+
 See [RELEASING.md](./RELEASING.md) for the release flow and [DEPLOYMENT.md](./DEPLOYMENT.md) for backend expectations.
 
 ## Install into Obsidian for local testing
@@ -58,6 +68,13 @@ Fill in:
 - `Research API 地址`
 - `模型提供商`
 - provider credentials if your runtime expects them, such as `DashScope API Key`
+- optional per-feature timeouts for `Quick Check`, `Fact Guard`, `Deep Research`, and `Deep Research 导出`
+- optional `文档上下文上限 (字符)` to control client-side truncation before sending note content
+
+For local beta testing with the bundled mock backend:
+
+- `Research API 地址`: `http://127.0.0.1:8787`
+- `模型提供商`: `本地 Mock（离线调试）`
 
 ### Control Plane mode
 
@@ -86,7 +103,7 @@ The plugin sends the following content to your configured backend:
 
 - the user query
 - current selection
-- current note body
+- current note body (truncated on the client to the configured context limit)
 - current note title and path
 
 Do not enable this plugin against a backend you do not trust with note content.

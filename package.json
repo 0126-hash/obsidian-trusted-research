@@ -1,6 +1,6 @@
 {
   "name": "obsidian-trusted-research",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Trusted Research plugin for Obsidian: Quick Check, Fact Guard, and Deep Research with Runtime or Control Plane backends.",
   "main": "main.js",
   "type": "module",
@@ -9,12 +9,18 @@
   },
   "scripts": {
     "dev": "node esbuild.config.mjs",
+    "runtime:mock": "node deploy/mock-runtime.mjs",
     "version:bump": "node scripts/version-bump.mjs",
     "typecheck": "tsc --noEmit",
     "build": "npm run typecheck && node esbuild.config.mjs production",
     "release:prepare": "npm run build && node scripts/package-release.mjs"
   },
-  "keywords": ["obsidian", "plugin", "research", "fact-checking"],
+  "keywords": [
+    "obsidian",
+    "plugin",
+    "research",
+    "fact-checking"
+  ],
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^20.0.0",

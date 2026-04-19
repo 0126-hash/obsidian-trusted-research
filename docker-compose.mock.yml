@@ -1,0 +1,12 @@
+services:
+  trusted-research-runtime:
+    image: node:20-alpine
+    working_dir: /workspace
+    command: ["node", "deploy/mock-runtime.mjs"]
+    ports:
+      - "8787:8787"
+    environment:
+      PORT: "8787"
+      EXPORT_ROOT: "/workspace/.mock-exports"
+    volumes:
+      - ./:/workspace

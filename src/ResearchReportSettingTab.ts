@@ -163,8 +163,8 @@ export class ResearchReportSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("请求超时 (ms)")
-      .setDesc("Quick Check / Fact Guard / Deep Research 的单次请求超时。")
+      .setName("Quick Check 超时 (ms)")
+      .setDesc("Quick Check 的单次请求超时。")
       .addText((text) =>
         text
           .setPlaceholder("30000")
@@ -173,6 +173,70 @@ export class ResearchReportSettingTab extends PluginSettingTab {
             const nextValue = Number.parseInt(value, 10);
             if (!Number.isNaN(nextValue) && nextValue >= 5000) {
               this.plugin.settings.quickCheckTimeout = nextValue;
+              await this.plugin.saveSettings();
+            }
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("Fact Guard 超时 (ms)")
+      .setDesc("Fact Guard 的单次请求超时。")
+      .addText((text) =>
+        text
+          .setPlaceholder("30000")
+          .setValue(String(this.plugin.settings.factGuardTimeout))
+          .onChange(async (value) => {
+            const nextValue = Number.parseInt(value, 10);
+            if (!Number.isNaN(nextValue) && nextValue >= 5000) {
+              this.plugin.settings.factGuardTimeout = nextValue;
+              await this.plugin.saveSettings();
+            }
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("Deep Research 超时 (ms)")
+      .setDesc("创建任务、轮询状态、取消任务时使用。")
+      .addText((text) =>
+        text
+          .setPlaceholder("45000")
+          .setValue(String(this.plugin.settings.deepResearchTimeout))
+          .onChange(async (value) => {
+            const nextValue = Number.parseInt(value, 10);
+            if (!Number.isNaN(nextValue) && nextValue >= 5000) {
+              this.plugin.settings.deepResearchTimeout = nextValue;
+              await this.plugin.saveSettings();
+            }
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("Deep Research 导出超时 (ms)")
+      .setDesc("仅用于 Runtime 模式下的 Markdown 导出。")
+      .addText((text) =>
+        text
+          .setPlaceholder("60000")
+          .setValue(String(this.plugin.settings.deepResearchExportTimeout))
+          .onChange(async (value) => {
+            const nextValue = Number.parseInt(value, 10);
+            if (!Number.isNaN(nextValue) && nextValue >= 5000) {
+              this.plugin.settings.deepResearchExportTimeout = nextValue;
+              await this.plugin.saveSettings();
+            }
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("文档上下文上限 (字符)")
+      .setDesc("客户端发送当前文档前会截断到该长度，选中文本固定最多 8000 字。")
+      .addText((text) =>
+        text
+          .setPlaceholder("12000")
+          .setValue(String(this.plugin.settings.maxDocumentContextChars))
+          .onChange(async (value) => {
+            const nextValue = Number.parseInt(value, 10);
+            if (!Number.isNaN(nextValue) && nextValue >= 2000) {
+              this.plugin.settings.maxDocumentContextChars = nextValue;
               await this.plugin.saveSettings();
             }
           })
@@ -223,6 +287,20 @@ export class ResearchReportSettingTab extends PluginSettingTab {
         );
 
       new Setting(containerEl)
+        .setName("Fact Guard 模型")
+        .setDesc("默认 qwen-flash。")
+        .addText((text) =>
+          text
+            .setPlaceholder(DEFAULT_SETTINGS.dashscopeFactGuardModel)
+            .setValue(this.plugin.settings.dashscopeFactGuardModel)
+            .onChange(async (value) => {
+              this.plugin.settings.dashscopeFactGuardModel =
+                value.trim() || DEFAULT_SETTINGS.dashscopeFactGuardModel;
+              await this.plugin.saveSettings();
+            })
+        );
+
+      new Setting(containerEl)
         .setName("Deep Research 模型")
         .setDesc("默认 qwen-plus。")
         .addText((text) =>
@@ -239,7 +317,7 @@ export class ResearchReportSettingTab extends PluginSettingTab {
 
     containerEl.createEl("p", {
       text:
-        "隐私提示：Quick Check、Fact Guard、Deep Research 会把当前问题、选中文本和当前文档内容发送到你配置的后端服务。",
+        "隐私提示：Quick Check、Fact Guard、Deep Research 会把当前问题、选中文本和截断后的当前文档内容发送到你配置的后端服务。",
     });
   }
 }
